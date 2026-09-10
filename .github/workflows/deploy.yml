@@ -1,0 +1,52 @@
+﻿name: deploy-production
+
+on:
+  push:
+    branches:
+      - master
+      - 'hotfix/**'
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Creer le deploiement
+        id: deployment
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const branch = context.ref.replace('refs/heads/', '');
+
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: branch,
+              environment: 'production',
+              required_contexts: [],
+              auto_merge: false
+            });
+
+            return deployment.data.id;
+
+      - name: Deploiement fictif
+        run: echo "deploiement"
+
+      - name: Marquer le deploiement comme reussi
+        if: success()
+        uses: actions/github-script@v9
+        with:
+          script: |
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: ${{ steps.deployment.outputs.result }},
+              state: 'success',
+              environment: 'production'
+            });
